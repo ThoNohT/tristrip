@@ -1,8 +1,10 @@
 #!/usr/bin/env sh
 
+set -xe
+
 SRC="./src/main.c"
-CFLAGS="-Wall -Wextra -ggdb"
-LIBS="-lm -ldl lrt -I./raylib-5.5/src -L. -l:libraylib.a"
+CFLAGS="-Wall -Wextra -ggdb -I./raylib-5.0/src"
+LIBS="-lm -ldl -lrt -L. -l:libraylib.a"
 
 if [ $1 = "build" ]; then
     clang $CFLAGS -Wall -o ./main $SRC $LIBS
