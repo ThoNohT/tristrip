@@ -136,11 +136,11 @@ void draw_mouse_pos(Noh_Arena *arena, Vector2 mouse, float x, float y) {
 }
 
 // Draw a number near a grid point.
-void draw_number(Noh_Arena *arena, Vector2 center, Vector2 pos, int number) {
+void draw_grid_number(Noh_Arena *arena, Vector2 center, Vector2 pos, int number) {
     noh_arena_save(arena);
     char *text = noh_arena_sprintf(arena, "%i", number);
-    Vector2 text_pos = Vector2Add(grid_to_screen(center, pos), CLITERAL(Vector2) { 10, -10 });
-    DrawText(text, text_pos.x, text_pos.y, 20, ORANGE);
+    Vector2 text_pos = Vector2Add(grid_to_screen(center, pos), CLITERAL(Vector2) { 15, -15 });
+    draw_text(text, Align_Middle_Center, 29, text_pos.x, text_pos.y, ORANGE);
     noh_arena_rewind(arena);
 }
 
@@ -224,6 +224,21 @@ void move_point_index(Points *points, Vector2 pos, int direction) {
     points->elems[point_index + direction] = temp;
 }
 
+void switch_to_next_layer(Layers *layers) {
+    if (layers->active_layer == layers->count - 1) {
+        if (layers->elems[layers->active_layer].count == 0) return;
+        Points new_points = {0};
+        noh_da_append(layers, new_points);
+    }
+
+    layers->active_layer++;
+}
+
+void switch_to_previous_layer(Layers *layers) {
+    if (layers->active_layer == 0) return;
+    layers->active_layer--;
+}
+
 int main() {
     SetTargetFPS(60);
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
@@ -249,57 +264,67 @@ int main() {
         draw_mouse_pos(&arena, mouse, screen_size.x - 10, 10);
         draw_active_layer(&arena, &layers, 10, 40);
 
+        Points *active_points = &layers.elems[layers.active_layer];
+
         // Update
         // Usage: Left click to add a point.
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            add_point(&points, mouse);
+            add_point(active_points, mouse);
         }
 
         // Usage: Right click to remove a point.
         if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-            remove_point(&points, mouse);
+            remove_point(active_points, mouse);
         }
 
         // Usage: Hold left button to move a point.
         static int moving_index = -1;
         if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && moving_index == -1) {
-            moving_index = start_moving(&points, mouse);
+            moving_index = start_moving(active_points, mouse);
         } else if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && moving_index > -1) {
-            stop_moving(&points, moving_index, mouse);
+            stop_moving(active_points, moving_index, mouse);
             moving_index = -1;
         }
 
         // Usage: scroll the mouse wheel to move a point's position in the list.
         Vector2 scroll = GetMouseWheelMoveV();
         if (scroll.y > 0) {
-            move_point_index(&points, mouse, -1);
+            move_point_index(active_points, mouse, -1);
         } else if (scroll.y < 0) {
-            move_point_index(&points, mouse, 1);
+            move_point_index(active_points, mouse, 1);
+        }
+
+        // Usage: left and right arrow keys to move between layers.
+        // A new layer is created when moving right from the last layer if it has points.
+        if (IsKeyPressed(KEY_RIGHT)) {
+            switch_to_next_layer(&layers);
+        } else if (IsKeyPressed(KEY_LEFT)) {
+            switch_to_previous_layer(&layers);
         }
 
         // Draw
         DrawCircleV(grid_to_screen(screen_center, mouse), 3, GREEN);
 
         noh_arena_save(&arena);
-        Vector2 *screen_points = noh_arena_alloc(&arena, sizeof(Vector2) * points.count);
-        for (size_t i = 0; i < points.count; i++) {
-            screen_points[i] = grid_to_screen(screen_center, points.elems[i]);
+        Vector2 *screen_points = noh_arena_alloc(&arena, sizeof(Vector2) * active_points->count);
+        for (size_t i = 0; i < active_points->count; i++) {
+            screen_points[i] = grid_to_screen(screen_center, active_points->elems[i]);
         }
 
-        DrawTriangleStrip(screen_points, points.count, CLITERAL(Color) { 255, 0, 0, 255 });
+        DrawTriangleStrip(screen_points, active_points->count, CLITERAL(Color) { 255, 0, 0, 255 });
 
-        for (size_t i = 1; i < points.count; i++) {
+        for (size_t i = 1; i < active_points->count; i++) {
             DrawLineV(screen_points[i-1], screen_points[i], GREEN);
         }
 
 
-        for (size_t i = 0; i < points.count; i++) {
+        for (size_t i = 0; i < active_points->count; i++) {
             if ((int)i == moving_index) {
                 DrawCircleV(screen_points[i], 7, WHITE);
             } else {
                 DrawCircleV(screen_points[i], 5, ORANGE);
             }
-            draw_number(&arena, screen_center, points.elems[i], i);
+            draw_grid_number(&arena, screen_center, active_points->elems[i], i);
         }
         noh_arena_rewind(&arena);
 
