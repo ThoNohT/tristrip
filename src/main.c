@@ -16,6 +16,7 @@
 #define POINT_NORMAL_COLOR ORANGE
 #define POINT_MOUSE_COLOR GREEN
 #define POINT_NUMBER_COLOR ORANGE
+#define CONNECTION_COLOR CLITERAL(Color) { 0, 64, 255, 255 }
 
 typedef struct {
     Vector2 *elems;
@@ -129,10 +130,11 @@ void draw_mouse_pos(Noh_Arena *arena, Vector2 mouse, float x, float y) {
 }
 
 // Draw a number near a grid point.
-void draw_grid_number(Noh_Arena *arena, Vector2 center, Vector2 pos, int number, Color color) {
+void draw_grid_number(Noh_Arena *arena, Vector2 center, Vector2 pos, int number, Color color, bool other_side) {
     noh_arena_save(arena);
     char *text = noh_arena_sprintf(arena, "%i", number);
     Vector2 text_pos = Vector2Add(grid_to_screen(center, pos), CLITERAL(Vector2) { 15, -15 });
+    if (other_side) text_pos = Vector2Subtract(grid_to_screen(center, pos), CLITERAL(Vector2) { 15, -15 }); 
     draw_text(text, Align_Middle_Center, 29, text_pos.x, text_pos.y, color);
     noh_arena_rewind(arena);
 }
@@ -140,6 +142,15 @@ void draw_grid_number(Noh_Arena *arena, Vector2 center, Vector2 pos, int number,
 void draw_active_layer(Noh_Arena *arena, Layers *layers, float x, float y) {
     noh_arena_save(arena);
     char *text = noh_arena_sprintf(arena, "Layer: %zu", layers->active_layer);
+    draw_text(text, Align_Top_Left, 20, x, y, LIME);
+    noh_arena_rewind(arena);
+}
+
+void draw_comparison_layer(Noh_Arena *arena, Layers *layers, float x, float y) {
+    if (layers->comparison_layer == -1) return;
+
+    noh_arena_save(arena);
+    char *text = noh_arena_sprintf(arena, "Compare: %zu", layers->comparison_layer);
     draw_text(text, Align_Top_Left, 20, x, y, LIME);
     noh_arena_rewind(arena);
 }
@@ -232,17 +243,23 @@ void switch_to_previous_layer(Layers *layers) {
     layers->active_layer--;
 }
 
+Vector2 *translate_points_to_screen(Noh_Arena *arena, Vector2 center, Points *points) {
+    Vector2 *result = noh_arena_alloc(arena, sizeof(Vector2) * points->count);
+    for (size_t i = 0; i < points->count; i++) {
+        result[i] = grid_to_screen(center, points->elems[i]);
+    }
+    return result;
+}
+
 void draw_layer(Noh_Arena *arena, Vector2 center, int moving_index, Points *points, bool comparison) {
-    Color triStripColor = comparison ? ColorBrightness(TRIANGLE_STRIP_COLOR, -0.7) : TRIANGLE_STRIP_COLOR;
-    Color triLinesColor = comparison ? ColorBrightness(TRIANGLE_LINES_COLOR, -0.7) : TRIANGLE_LINES_COLOR;
-    Color pointColor = comparison ? ColorBrightness(POINT_NORMAL_COLOR, -0.7) : POINT_NORMAL_COLOR;
+    Color triStripColor = comparison ? ColorBrightness(TRIANGLE_STRIP_COLOR, -0.85) : TRIANGLE_STRIP_COLOR;
+    Color triLinesColor = comparison ? ColorBrightness(TRIANGLE_LINES_COLOR, -0.85) : TRIANGLE_LINES_COLOR;
+    Color pointColor = comparison ? ColorBrightness(POINT_NORMAL_COLOR, -0.85) : POINT_NORMAL_COLOR;
+    Color pointNumberColor = comparison ? ColorBrightness(POINT_NUMBER_COLOR, -0.85) : POINT_NUMBER_COLOR;
 
     // Calculate points of active layer.
     noh_arena_save(arena);
-    Vector2 *screen_points = noh_arena_alloc(arena, sizeof(Vector2) * points->count);
-    for (size_t i = 0; i < points->count; i++) {
-        screen_points[i] = grid_to_screen(center, points->elems[i]);
-    }
+    Vector2 *screen_points = translate_points_to_screen(arena, center, points);
 
     // Draw triangle strip of active layer
     DrawTriangleStrip(screen_points, points->count, triStripColor);
@@ -259,10 +276,22 @@ void draw_layer(Noh_Arena *arena, Vector2 center, int moving_index, Points *poin
         } else {
             DrawCircleV(screen_points[i], 5, pointColor);
         }
-        if (!comparison) draw_grid_number(arena, center, points->elems[i], i, POINT_NUMBER_COLOR);
+        draw_grid_number(arena, center, points->elems[i], i, pointNumberColor, comparison);
     }
 
     noh_arena_rewind(arena);
+}
+
+void draw_connections(Vector2 center, Points *active, Points *comparison) {
+    size_t no_connections = min(active->count, comparison->count);
+    if (no_connections == 0) return;
+
+    for (size_t i = 0; i < no_connections; i++) {
+        DrawLineV(
+            grid_to_screen_p(center, active->elems[i].x, active->elems[i].y),
+            grid_to_screen_p(center, comparison->elems[i].x, comparison->elems[i].y),
+            CONNECTION_COLOR);
+    }
 }
 
 int main() {
@@ -290,6 +319,7 @@ int main() {
         DrawFPS(10, 10);
         draw_mouse_pos(&arena, mouse, screen_size.x - 10, 10);
         draw_active_layer(&arena, &layers, 10, 40);
+        draw_comparison_layer(&arena, &layers, 10, 70);
 
         Points *active_points = &layers.elems[layers.active_layer];
 
@@ -339,11 +369,14 @@ int main() {
             }
         }
 
-        // Draw comparison layer if available.
+        // Draw
         if(layers.comparison_layer >= 0 && layers.comparison_layer < (int)layers.count) {
             draw_layer(&arena, screen_center, moving_index, &layers.elems[layers.comparison_layer], true);
         }
         draw_layer(&arena, screen_center, moving_index, &layers.elems[layers.active_layer], false);
+        if(layers.comparison_layer >= 0 && layers.comparison_layer < (int)layers.count) {
+            draw_connections(screen_center, &layers.elems[layers.active_layer], &layers.elems[layers.comparison_layer]);
+        }
 
         // Draw which point the mouse is hovering over.
         DrawCircleV(grid_to_screen(screen_center, mouse), 3, POINT_MOUSE_COLOR);
