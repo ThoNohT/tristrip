@@ -16,7 +16,67 @@ typedef struct {
     size_t capacity;
 } Points;
 
+typedef struct {
+    Points *elems;
+    size_t count;
+    size_t capacity;
+
+    size_t active_layer;
+    int comparison_layer; // I want to use -1 to indicate no comparison.
+} Layers;
+
 const int GRID_SPACING = 50;
+
+typedef enum {
+    Align_Top_Left,
+    Align_Top_Right,
+    Align_Top_Center,
+    Align_Middle_Left,
+    Align_Middle_Right,
+    Align_Middle_Center,
+    Align_Bottom_Left,
+    Align_Bottom_Right,
+    Align_Bottom_Center
+} Text_Align;
+
+/// Draws text at the specified position, where it is aligned to this position using the specified alignment.
+void draw_text(char *text, Text_Align align, int font_size, int anchor_x, int anchor_y, Color color) {
+    Font font = GetFontDefault();
+    Vector2 text_size = MeasureTextEx(font, text, font_size, 1);
+    Vector2 top_left = { .x = anchor_x, .y = anchor_y };
+
+    // Align vertically.
+    switch (align) {
+        case Align_Middle_Left:
+        case Align_Middle_Center:
+        case Align_Middle_Right:
+            top_left.y -= text_size.y / 2;
+            break;
+        case Align_Bottom_Left:
+        case Align_Bottom_Right:
+        case Align_Bottom_Center:
+            top_left.y -= text_size.y;
+            break;
+        default: break;
+    }
+
+    // Align horizontally.
+    switch (align) {
+         case Align_Top_Right:
+         case Align_Middle_Right:
+         case Align_Bottom_Right:
+             top_left.x -= text_size.x;
+             break;
+         case Align_Top_Center:
+         case Align_Middle_Center:
+         case Align_Bottom_Center:
+             top_left.x -= text_size.x / 2;
+             break;
+        default: break;
+    }
+
+    DrawText(text, top_left.x, top_left.y, font_size, color);
+}
 
 /// Convert a point in grid coordinates to screen coordinates, provided the center point of the screen.
 Vector2 grid_to_screen(Vector2 center, Vector2 point) {
@@ -71,7 +131,7 @@ void draw_grid_and_axes(Vector2 center) {
 void draw_mouse_pos(Noh_Arena *arena, Vector2 mouse, float x, float y) {
     noh_arena_save(arena);
     char *text = noh_arena_sprintf(arena, "%i, %i", (int)mouse.x, (int)mouse.y);
-    DrawText(text, x, y, 20, LIME);
+    draw_text(text, Align_Top_Right, 20, x, y, LIME);
     noh_arena_rewind(arena);
 }
 
@@ -81,6 +141,13 @@ void draw_number(Noh_Arena *arena, Vector2 center, Vector2 pos, int number) {
     char *text = noh_arena_sprintf(arena, "%i", number);
     Vector2 text_pos = Vector2Add(grid_to_screen(center, pos), CLITERAL(Vector2) { 10, -10 });
     DrawText(text, text_pos.x, text_pos.y, 20, ORANGE);
+    noh_arena_rewind(arena);
+}
+
+void draw_active_layer(Noh_Arena *arena, Layers *layers, float x, float y) {
+    noh_arena_save(arena);
+    char *text = noh_arena_sprintf(arena, "Layer: %zu", layers->active_layer);
+    draw_text(text, Align_Top_Left, 20, x, y, LIME);
     noh_arena_rewind(arena);
 }
 
@@ -164,7 +231,9 @@ int main() {
     SetWindowMonitor(0);
 
     Noh_Arena arena = noh_arena_init(1 KB);
+    Layers layers = {0};
     Points points = {0};
+    noh_da_append(&layers, points);
 
     while (!WindowShouldClose()) {
         Vector2 screen_size = get_screen_size();
@@ -177,7 +246,8 @@ int main() {
         // Hud
         draw_grid_and_axes(screen_center);
         DrawFPS(10, 10);
-        draw_mouse_pos(&arena, mouse, screen_size.x - 100, 10);
+        draw_mouse_pos(&arena, mouse, screen_size.x - 10, 10);
+        draw_active_layer(&arena, &layers, 10, 40);
 
         // Update
         // Usage: Left click to add a point.
