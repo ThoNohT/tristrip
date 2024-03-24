@@ -93,6 +93,15 @@
 
 ///////////////////////// Core stuff /////////////////////////
 
+#define max(a,b)               \
+   ({ __typeof__ (a) _a = (a); \
+      __typeof__ (b) _b = (b); \
+     _a > _b ? _a : _b; })
+#define min(a,b)               \
+   ({ __typeof__ (a) _a = (a); \
+      __typeof__ (b) _b = (b); \
+     _a < _b ? _a : _b; })
+
 #define noh_array_len(array) (sizeof(array)/sizeof(array[0]))
 #define noh_array_get(array, index) \
     (noh_assert(index >= 0), assert(index < noh_array_get(array)), array[index])
