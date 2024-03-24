@@ -28,15 +28,9 @@ typedef struct {
 const int GRID_SPACING = 50;
 
 typedef enum {
-    Align_Top_Left,
-    Align_Top_Right,
-    Align_Top_Center,
-    Align_Middle_Left,
-    Align_Middle_Right,
-    Align_Middle_Center,
-    Align_Bottom_Left,
-    Align_Bottom_Right,
-    Align_Bottom_Center
+    Align_Top_Left, Align_Top_Right, Align_Top_Center,
+    Align_Middle_Left, Align_Middle_Right, Align_Middle_Center,
+    Align_Bottom_Left, Align_Bottom_Right, Align_Bottom_Center
 } Text_Align;
 
 /// Draws text at the specified position, where it is aligned to this position using the specified alignment.
@@ -47,14 +41,10 @@ void draw_text(char *text, Text_Align align, int font_size, int anchor_x, int an
 
     // Align vertically.
     switch (align) {
-        case Align_Middle_Left:
-        case Align_Middle_Center:
-        case Align_Middle_Right:
+        case Align_Middle_Left: case Align_Middle_Center: case Align_Middle_Right:
             top_left.y -= text_size.y / 2;
             break;
-        case Align_Bottom_Left:
-        case Align_Bottom_Right:
-        case Align_Bottom_Center:
+        case Align_Bottom_Left: case Align_Bottom_Right: case Align_Bottom_Center:
             top_left.y -= text_size.y;
             break;
         default: break;
@@ -62,14 +52,10 @@ void draw_text(char *text, Text_Align align, int font_size, int anchor_x, int an
 
     // Align horizontally.
     switch (align) {
-         case Align_Top_Right:
-         case Align_Middle_Right:
-         case Align_Bottom_Right:
+         case Align_Top_Right: case Align_Middle_Right: case Align_Bottom_Right:
              top_left.x -= text_size.x;
              break;
-         case Align_Top_Center:
-         case Align_Middle_Center:
-         case Align_Bottom_Center:
+         case Align_Top_Center: case Align_Middle_Center: case Align_Bottom_Center:
              top_left.x -= text_size.x / 2;
              break;
         default: break;
