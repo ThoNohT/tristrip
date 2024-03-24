@@ -149,6 +149,13 @@ void draw_grid_number(Noh_Arena *arena, Vector2 center, Vector2 pos, int number,
     draw_number(arena, grid_to_screen(center, pos), number, color, other_side);
 }
 
+void draw_animation_ms(Noh_Arena *arena, size_t duration, float x, float y) {
+    noh_arena_save(arena);
+    char *text = noh_arena_sprintf(arena, "Animation: %zums", duration);
+    draw_text(text, Align_Top_Left, 20, x, y, LIME);
+    noh_arena_rewind(arena);
+}
+
 void draw_active_layer(Noh_Arena *arena, Layers *layers, float x, float y) {
     noh_arena_save(arena);
     char *text = noh_arena_sprintf(arena, "Layer: %zu", layers->active_layer);
@@ -315,13 +322,13 @@ void draw_connections(Vector2 center, Points *active, Points *comparison) {
     }
 }
 
-bool draw_animation(Noh_Arena *arena, Vector2 center, float *animation_time, Points *from, Points *to) {
+bool draw_animation(Noh_Arena *arena, Vector2 center, float *animation_time, Points *from, Points *to, size_t duration) {
     float ft = GetFrameTime();
     if(*animation_time <= 0.0) {
         *animation_time = 0.0;
         return false;
     }
-    *animation_time -= ft * 2;
+    *animation_time -= ft / duration * 1000;
 
     size_t total_points = max(from->count, to->count);
     size_t shared_points = min(from->count, to->count);
@@ -368,8 +375,10 @@ int main() {
         draw_grid_and_axes(screen_center);
         DrawFPS(10, 10);
         draw_mouse_pos(&arena, mouse, screen_size.x - 10, 10);
-        draw_active_layer(&arena, &layers, 10, 40);
-        draw_comparison_layer(&arena, &layers, 10, 70);
+        static size_t animation_ms = 200;
+        draw_animation_ms(&arena, animation_ms, 10, 40);
+        draw_active_layer(&arena, &layers, 10, 70);
+        draw_comparison_layer(&arena, &layers, 10, 100);
 
         Points *active_points = &layers.elems[layers.active_layer];
 
@@ -419,6 +428,13 @@ int main() {
             }
         }
 
+        // Usage: up and down arrow keys increase and decrease animation time.
+        if (IsKeyPressed(KEY_UP)) {
+            if (animation_ms < 6400) animation_ms *= 2;
+        } else if (IsKeyPressed(KEY_DOWN)) {
+            if (animation_ms > 50) animation_ms /= 2;
+        }
+
 #define ACTIVE &layers.elems[layers.active_layer]
 #define COMPARE &layers.elems[layers.comparison_layer]
 #define HAS_COMPARISON                                     \
@@ -436,7 +452,7 @@ int main() {
         }
 
         // Draw
-        if (!draw_animation(&arena, screen_center, &animation_time, ACTIVE, COMPARE)) {
+        if (!draw_animation(&arena, screen_center, &animation_time, ACTIVE, COMPARE, animation_ms)) {
             if (HAS_COMPARISON) draw_layer(&arena, screen_center, moving_index, COMPARE, true);
             draw_layer(&arena, screen_center, moving_index, ACTIVE, false);
             if (HAS_COMPARISON) draw_connections(screen_center, ACTIVE, COMPARE);
