@@ -257,6 +257,10 @@ void switch_to_next_layer(Layers *layers) {
 
 void switch_to_previous_layer(Layers *layers) {
     if (layers->active_layer == 0) return;
+
+    if (layers->active_layer == layers->count - 1) {
+        if (layers->elems[layers->active_layer].count == 0) layers->count--;
+    }
     layers->active_layer--;
 }
 
