@@ -1,5 +1,9 @@
 # Tristrip
 
+<p align=center>
+  <img src="./example.png">
+</p>
+
 A simple visualizer of how triangle strips work in Raylib.
 
 ## Usage
