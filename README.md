@@ -21,5 +21,5 @@ The following controls are available:
 - Left and right arrow keys move between layers. Pressing right on the last layer creates a new one if it has points. Pressing left on the last layer removes it if it has no points.
 - Space key toggles the current layer as comparison layer. Pressing it again on the current comparison layer removes the comparison layer.
 - A key animates between the active and comparison layers.
-- Up anddown arrow keys in-/decrease the animation time.
+- Up and down arrow keys in-/decrease the animation time.
 
